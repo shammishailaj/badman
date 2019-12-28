@@ -8,8 +8,8 @@ type BadMan struct {
 	ser  Serializer
 }
 
-// NewBadMan is constructor of BadMan
-func NewBadMan() *BadMan {
+// New is constructor of BadMan
+func New() *BadMan {
 	return &BadMan{}
 }
 
