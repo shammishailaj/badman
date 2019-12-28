@@ -30,7 +30,7 @@ func (x *BadMan) Download(srcSet []Source) error {
 
 // Dump output serialized data into w to save current repository.
 func (x *BadMan) Dump(w io.Writer) error {
-	if err := x.ser.Serialize(x.repo.dump(), w); err != nil {
+	if err := x.ser.serialize(x.repo.dump(), w); err != nil {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func (x *BadMan) Dump(w io.Writer) error {
 
 // Load input data that is serialized by Dump(). Please note to use same Serializer for Dump and Load.
 func (x *BadMan) Load(r io.Reader) error {
-	for msg := range x.ser.Deserialize(r) {
+	for msg := range x.ser.deserialize(r) {
 		if msg.Error != nil {
 			return msg.Error
 		}
