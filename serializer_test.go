@@ -2,7 +2,6 @@ package badman_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
@@ -45,14 +44,14 @@ func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 		close(ch)
 	}()
 
-	err := badman.SerializerSerialize(ser, ch, buf)
+	err := ser.Serialize(ch, buf)
 	require.NoError(t, err)
 
 	raw := buf.Bytes()
 	assert.NotEqual(t, 0, len(raw))
-	fmt.Printf("%s", string(raw))
+
 	reader := bytes.NewReader(raw)
-	readCh := badman.SerializerDeserialize(ser, reader)
+	readCh := ser.Deserialize(reader)
 
 	m1 := <-readCh
 	require.NoError(t, m1.Error)

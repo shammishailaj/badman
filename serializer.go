@@ -12,8 +12,8 @@ const jsonSerializerBufSize = 32
 
 // Serializer converts array of BadEntity to byte array and the reverse.
 type Serializer interface {
-	serialize(ch chan *BadEntityMessage, w io.Writer) error
-	deserialize(r io.Reader) chan *BadEntityMessage
+	Serialize(ch chan *BadEntityMessage, w io.Writer) error
+	Deserialize(r io.Reader) chan *BadEntityMessage
 }
 
 // JSONSerializer is simple line json serializer
@@ -24,7 +24,8 @@ func NewJSONSerializer() *JSONSerializer {
 	return &JSONSerializer{}
 }
 
-func (x *JSONSerializer) serialize(ch chan *BadEntityMessage, w io.Writer) error {
+// Serialize of JSONSerializer marshals BadEntity to JSON and append line feed at tail.
+func (x *JSONSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error {
 	for msg := range ch {
 		if msg.Error != nil {
 			return msg.Error
@@ -44,7 +45,8 @@ func (x *JSONSerializer) serialize(ch chan *BadEntityMessage, w io.Writer) error
 	return nil
 }
 
-func (x *JSONSerializer) deserialize(r io.Reader) chan *BadEntityMessage {
+// Deserialize of JSONSerializer reads reader and unmarshal nd-json.
+func (x *JSONSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
 	ch := make(chan *BadEntityMessage, jsonSerializerBufSize)
 	go func() {
 		defer close(ch)

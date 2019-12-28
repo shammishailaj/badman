@@ -30,7 +30,7 @@ func (x *BadMan) Download(srcSet []Source) error {
 
 // Dump output serialized data into w to save current repository.
 func (x *BadMan) Dump(w io.Writer) error {
-	if err := x.ser.serialize(x.repo.dump(), w); err != nil {
+	if err := x.ser.Serialize(x.repo.Dump(), w); err != nil {
 		return err
 	}
 
@@ -39,12 +39,12 @@ func (x *BadMan) Dump(w io.Writer) error {
 
 // Load input data that is serialized by Dump(). Please note to use same Serializer for Dump and Load.
 func (x *BadMan) Load(r io.Reader) error {
-	for msg := range x.ser.deserialize(r) {
+	for msg := range x.ser.Deserialize(r) {
 		if msg.Error != nil {
 			return msg.Error
 		}
 
-		if err := x.repo.put(*msg.Entity); err != nil {
+		if err := x.repo.Put(*msg.Entity); err != nil {
 			return err
 		}
 	}
@@ -56,12 +56,12 @@ func (x *BadMan) Load(r io.Reader) error {
 
 // ReplaceRepository changes Repository to store entities. Entities in old repository are copied to new repository before replacing.
 func (x *BadMan) ReplaceRepository(repo Repository) error {
-	for msg := range x.repo.dump() {
+	for msg := range x.repo.Dump() {
 		if msg.Error != nil {
 			return msg.Error
 		}
 
-		if err := repo.put(*msg.Entity); err != nil {
+		if err := repo.Put(*msg.Entity); err != nil {
 			return err
 		}
 	}

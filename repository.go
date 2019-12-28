@@ -19,11 +19,11 @@ type BadEntityMessage struct {
 
 // Repository is interface of data store.
 type Repository interface {
-	put(entity BadEntity) error
-	get(name string) ([]BadEntity, error)
-	del(name string) error
-	dump() chan *BadEntityMessage
-	clear() error
+	Put(entity BadEntity) error
+	Get(name string) ([]BadEntity, error)
+	Del(name string) error
+	Dump() chan *BadEntityMessage
+	Clear() error
 }
 
 // inMemoryRepository is in-memory type repository.
@@ -42,7 +42,7 @@ func (x *inMemoryRepository) init() {
 	x.data = make(map[string]map[string]BadEntity)
 }
 
-func (x *inMemoryRepository) put(entity BadEntity) error {
+func (x *inMemoryRepository) Put(entity BadEntity) error {
 	srcMap, ok := x.data[entity.Name]
 	if !ok {
 		srcMap = make(map[string]BadEntity)
@@ -52,7 +52,7 @@ func (x *inMemoryRepository) put(entity BadEntity) error {
 	return nil
 }
 
-func (x *inMemoryRepository) get(name string) ([]BadEntity, error) {
+func (x *inMemoryRepository) Get(name string) ([]BadEntity, error) {
 	srcMap, ok := x.data[name]
 	if !ok {
 		return nil, nil
@@ -66,12 +66,12 @@ func (x *inMemoryRepository) get(name string) ([]BadEntity, error) {
 	return entities, nil
 }
 
-func (x *inMemoryRepository) del(name string) error {
+func (x *inMemoryRepository) Del(name string) error {
 	delete(x.data, name)
 	return nil
 }
 
-func (x *inMemoryRepository) dump() chan *BadEntityMessage {
+func (x *inMemoryRepository) Dump() chan *BadEntityMessage {
 	ch := make(chan *BadEntityMessage)
 	go func() {
 		defer close(ch)
@@ -84,7 +84,7 @@ func (x *inMemoryRepository) dump() chan *BadEntityMessage {
 	return ch
 }
 
-func (x *inMemoryRepository) clear() error {
+func (x *inMemoryRepository) Clear() error {
 	x.init()
 	return nil
 }

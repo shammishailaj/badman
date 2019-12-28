@@ -37,27 +37,27 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	}
 
 	// No entity in repository
-	r1, err := badman.RepositoryGet(repo, "10.0.0.1")
+	r1, err := repo.Get("10.0.0.1")
 	require.NoError(t, err)
 	assert.Nil(t, r1)
-	r2, err := badman.RepositoryGet(repo, "blue.example.com")
+	r2, err := repo.Get("blue.example.com")
 	require.NoError(t, err)
 	assert.Nil(t, r2)
 
 	// Insert entities
-	require.NoError(t, badman.RepositoryPut(repo, e1))
-	require.NoError(t, badman.RepositoryPut(repo, e2))
-	require.NoError(t, badman.RepositoryPut(repo, e3))
-	require.NoError(t, badman.RepositoryPut(repo, e4))
+	require.NoError(t, repo.Put(e1))
+	require.NoError(t, repo.Put(e2))
+	require.NoError(t, repo.Put(e3))
+	require.NoError(t, repo.Put(e4))
 
 	// Get operations
-	r3, err := badman.RepositoryGet(repo, "10.0.0.1")
+	r3, err := repo.Get("10.0.0.1")
 	require.NoError(t, err)
 	assert.NotNil(t, r3)
 	require.Equal(t, 1, len(r3))
 	assert.Equal(t, "10.0.0.1", r3[0].Name)
 
-	r4, err := badman.RepositoryGet(repo, "blue.example.com")
+	r4, err := repo.Get("blue.example.com")
 	require.NoError(t, err)
 	assert.NotNil(t, r4)
 	require.Equal(t, 2, len(r4))
@@ -70,21 +70,21 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	}
 
 	// Delete operation
-	r5, err := badman.RepositoryGet(repo, "orange.example.net")
+	r5, err := repo.Get("orange.example.net")
 	require.NoError(t, err)
 	assert.NotNil(t, r5)
 	require.Equal(t, 1, len(r5))
 	assert.Equal(t, "orange.example.net", r5[0].Name)
 
-	err = badman.RepositoryDel(repo, "orange.example.net")
+	err = repo.Del("orange.example.net")
 	require.NoError(t, err)
-	r6, err := badman.RepositoryGet(repo, "orange.example.net")
+	r6, err := repo.Get("orange.example.net")
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(r6))
 
 	// Dump operation
 	counter := map[string]int{}
-	for msg := range badman.RepositoryDump(repo) {
+	for msg := range repo.Dump() {
 		require.NoError(t, msg.Error)
 		counter[msg.Entity.Name]++
 	}
@@ -93,8 +93,8 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	assert.Equal(t, 0, counter["orange.example.net"])
 
 	// Clear operation
-	require.NoError(t, badman.RepositoryClear(repo))
-	r7, err := badman.RepositoryGet(repo, "blue.example.com")
+	require.NoError(t, repo.Clear())
+	r7, err := repo.Get("blue.example.com")
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(r7))
 }
