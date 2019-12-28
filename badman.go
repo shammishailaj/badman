@@ -61,7 +61,9 @@ func (x *BadMan) ReplaceRepository(repo Repository) error {
 			return msg.Error
 		}
 
-		repo.put(*msg.Entity)
+		if err := repo.put(*msg.Entity); err != nil {
+			return err
+		}
 	}
 
 	x.repo = repo
