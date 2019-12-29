@@ -156,6 +156,53 @@ func (x *MVPS) Download() chan *BadEntityMessage {
 	return ch
 }
 
+func downloadURLhasu(csvURL string, ch chan *BadEntityMessage) {
+	defer close(ch)
+
+	body := getHttpBody(csvURL, ch)
+	if body == nil {
+		return
+	}
+
+	reader := csv.NewReader(body)
+	reader.Comment = []rune("#")[0]
+
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to read CSV of URLhaus")}
+			return
+		}
+
+		if len(row) != 8 {
+			continue
+		}
+
+		url, err := url.Parse(row[2])
+		if err != nil {
+			ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse URL in URLhaus CSV")}
+			return
+		}
+
+		ts, err := time.Parse("2006-01-02 15:04:05", row[1])
+		if err != nil {
+			ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse tiemstamp in URLhaus CSV")}
+			return
+		}
+
+		ch <- &BadEntityMessage{
+			Entity: &BadEntity{
+				Name:    url.Hostname(),
+				SavedAt: ts,
+				Src:     "URLhaus",
+				Reason:  row[4],
+			},
+		}
+	}
+}
+
 // URLhausRecent downloads blacklist from https://urlhaus.abuse.ch/downloads/csv_recent/
 // The blacklist has only URLs in recent 30 days.
 type URLhausRecent struct {
@@ -173,53 +220,26 @@ func NewURLhausRecent() *URLhausRecent {
 // Download of URLhausRecent downloads domains.txt and parses to extract domain names.
 func (x *URLhausRecent) Download() chan *BadEntityMessage {
 	ch := make(chan *BadEntityMessage, defaultSourceChanSize)
+	go downloadURLhasu(x.URL, ch)
+	return ch
+}
 
-	go func() {
-		defer close(ch)
+// URLhausOnline downloads blacklist from https://urlhaus.abuse.ch/downloads/csv_recent/
+// The blacklist has only online URLs.
+type URLhausOnline struct {
+	URL string
+}
 
-		body := getHttpBody(x.URL, ch)
-		if body == nil {
-			return
-		}
+// NewURLhausOnline is constructor of URLhausOnline
+func NewURLhausOnline() *URLhausOnline {
+	return &URLhausOnline{
+		URL: "https://urlhaus.abuse.ch/downloads/csv_online/",
+	}
+}
 
-		reader := csv.NewReader(body)
-		reader.Comment = []rune("#")[0]
-
-		for {
-			row, err := reader.Read()
-			if err == io.EOF {
-				return
-			} else if err != nil {
-				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to read CSV of URLhaus")}
-				return
-			}
-
-			if len(row) != 8 {
-				continue
-			}
-
-			url, err := url.Parse(row[2])
-			if err != nil {
-				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse URL in URLhaus CSV")}
-				return
-			}
-
-			ts, err := time.Parse("2006-01-02 15:04:05", row[1])
-			if err != nil {
-				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse tiemstamp in URLhaus CSV")}
-				return
-			}
-
-			ch <- &BadEntityMessage{
-				Entity: &BadEntity{
-					Name:    url.Hostname(),
-					SavedAt: ts,
-					Src:     "URLhaus",
-					Reason:  row[4],
-				},
-			}
-		}
-	}()
-
+// Download of URLhausOnline downloads domains.txt and parses to extract domain names.
+func (x *URLhausOnline) Download() chan *BadEntityMessage {
+	ch := make(chan *BadEntityMessage, defaultSourceChanSize)
+	go downloadURLhasu(x.URL, ch)
 	return ch
 }
