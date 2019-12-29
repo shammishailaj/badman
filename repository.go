@@ -9,6 +9,7 @@ type BadEntity struct {
 	Name    string
 	SavedAt time.Time
 	Src     string
+	Reason  string // optional
 }
 
 // BadEntityMessage is messaging format for Dump() to send both of error and
@@ -23,7 +24,6 @@ type Repository interface {
 	Get(name string) ([]BadEntity, error)
 	Del(name string) error
 	Dump() chan *BadEntityMessage
-	Clear() error
 }
 
 // inMemoryRepository is in-memory type repository.
