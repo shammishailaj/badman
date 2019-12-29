@@ -98,6 +98,7 @@ func (x *MalwareDomains) Download() chan *BadEntityMessage {
 	return ch
 }
 
+// MVPS downloads blacklist from http://winhelp2002.mvps.org/hosts.txt
 type MVPS struct {
 	URL string
 }
