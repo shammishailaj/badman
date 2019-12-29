@@ -1,0 +1,6 @@
+################################################################
+# This is test
+#
+# id,dateadded,url,url_status,threat,tags,urlhaus_link,reporter
+"280705","2019-12-29 02:09:24","http://blue.example.com:52585/Mozi.m","online","malware_download","elf","https://urlhaus.abuse.ch/url/xxx/","m_mizutani"
+"280704","2019-12-29 02:09:09","http://orange.example.net:59376/Mozi.m","online","malware_download","elf","https://urlhaus.abuse.ch/url/xxx/","m_mizutani"

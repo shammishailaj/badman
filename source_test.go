@@ -78,3 +78,32 @@ func TestMVPs(t *testing.T) {
 	assert.Equal(t, "MVPs", entities[1].Src)
 	assert.Equal(t, "", entities[1].Reason)
 }
+
+func TestURLhausRecent(t *testing.T) {
+	fd, err := os.Open("sample/urlhaus/test.csv")
+	require.NoError(t, err)
+	dummy := &dummyHTTPClient{
+		Resp: &http.Response{
+			StatusCode: 200,
+			Body:       fd,
+		},
+	}
+
+	badman.InjectNewHTTPClient(dummy)
+	defer badman.FixNewHTTPClient()
+
+	var entities []*badman.BadEntity
+	for msg := range badman.NewURLhausRecent().Download() {
+		require.NoError(t, msg.Error)
+		entities = append(entities, msg.Entity)
+	}
+
+	assert.Equal(t, 2, len(entities))
+	assert.Equal(t, "blue.example.com", entities[0].Name)
+	assert.Equal(t, "URLhaus", entities[0].Src)
+	assert.Equal(t, "malware_download", entities[0].Reason)
+
+	assert.Equal(t, "orange.example.net", entities[1].Name)
+	assert.Equal(t, "URLhaus", entities[1].Src)
+	assert.Equal(t, "malware_download", entities[1].Reason)
+}

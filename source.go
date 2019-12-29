@@ -2,7 +2,10 @@ package badman
 
 import (
 	"bufio"
+	"encoding/csv"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,6 +20,8 @@ type Source interface {
 // DefaultSources is default set of blacklist source that is maintained by badman.
 var DefaultSources = []Source{
 	NewMalwareDomains(),
+	NewMVPS(),
+	NewURLhausRecent(),
 }
 
 const defaultSourceChanSize = 128
@@ -44,6 +49,33 @@ func NewMalwareDomains() *MalwareDomains {
 	}
 }
 
+func getHttpBody(url string, ch chan *BadEntityMessage) io.Reader {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		ch <- &BadEntityMessage{
+			Error: errors.Wrapf(err, "Fail to craete new MalwareDomains HTTP request to: %s", url),
+		}
+		return nil
+	}
+
+	client := newHTTPClient()
+	resp, err := client.Do(req)
+	if err != nil {
+		ch <- &BadEntityMessage{
+			Error: errors.Wrapf(err, "Fail to send HTTP request to: %s", url),
+		}
+		return nil
+	}
+	if resp.StatusCode != 200 {
+		ch <- &BadEntityMessage{
+			Error: errors.Wrapf(err, "Unexpected status code (%d): %s", resp.StatusCode, url),
+		}
+		return nil
+	}
+
+	return resp.Body
+}
+
 // Download of MalwareDomains downloads domains.txt and parses to extract domain names.
 func (x *MalwareDomains) Download() chan *BadEntityMessage {
 	ch := make(chan *BadEntityMessage, defaultSourceChanSize)
@@ -52,31 +84,12 @@ func (x *MalwareDomains) Download() chan *BadEntityMessage {
 		defer close(ch)
 
 		now := time.Now()
-
-		req, err := http.NewRequest("GET", x.URL, nil)
-		if err != nil {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Fail to craete new MalwareDomains HTTP request to: %s", x.URL),
-			}
+		body := getHttpBody(x.URL, ch)
+		if body == nil {
 			return
 		}
 
-		client := newHTTPClient()
-		resp, err := client.Do(req)
-		if err != nil {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Fail to send HTTP request to: %s", x.URL),
-			}
-			return
-		}
-		if resp.StatusCode != 200 {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Unexpected status code (%d): %s", resp.StatusCode, x.URL),
-			}
-			return
-		}
-
-		scanner := bufio.NewScanner(resp.Body)
+		scanner := bufio.NewScanner(body)
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.HasPrefix(line, "#") {
@@ -118,31 +131,12 @@ func (x *MVPS) Download() chan *BadEntityMessage {
 		defer close(ch)
 
 		now := time.Now()
-
-		req, err := http.NewRequest("GET", x.URL, nil)
-		if err != nil {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Fail to craete new MVPS HTTP request to: %s", x.URL),
-			}
+		body := getHttpBody(x.URL, ch)
+		if body == nil {
 			return
 		}
 
-		client := newHTTPClient()
-		resp, err := client.Do(req)
-		if err != nil {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Fail to send HTTP request to: %s", x.URL),
-			}
-			return
-		}
-		if resp.StatusCode != 200 {
-			ch <- &BadEntityMessage{
-				Error: errors.Wrapf(err, "Unexpected status code (%d): %s", resp.StatusCode, x.URL),
-			}
-			return
-		}
-
-		scanner := bufio.NewScanner(resp.Body)
+		scanner := bufio.NewScanner(body)
 		for scanner.Scan() {
 			line := scanner.Text()
 			row := strings.Split(line, " ")
@@ -155,6 +149,74 @@ func (x *MVPS) Download() chan *BadEntityMessage {
 						Src:     "MVPs",
 					},
 				}
+			}
+		}
+	}()
+
+	return ch
+}
+
+// URLhausRecent downloads blacklist from https://urlhaus.abuse.ch/downloads/csv_recent/
+// The blacklist has only URLs in recent 30 days.
+type URLhausRecent struct {
+	URL string
+}
+
+// NewURLhausRecent is constructor of URLhausRecent
+func NewURLhausRecent() *URLhausRecent {
+	return &URLhausRecent{
+		URL: "https://urlhaus.abuse.ch/downloads/csv_recent/",
+		//		"https://urlhaus.abuse.ch/downloads/csv_online/",
+	}
+}
+
+// Download of URLhausRecent downloads domains.txt and parses to extract domain names.
+func (x *URLhausRecent) Download() chan *BadEntityMessage {
+	ch := make(chan *BadEntityMessage, defaultSourceChanSize)
+
+	go func() {
+		defer close(ch)
+
+		body := getHttpBody(x.URL, ch)
+		if body == nil {
+			return
+		}
+
+		reader := csv.NewReader(body)
+		reader.Comment = []rune("#")[0]
+
+		for {
+			row, err := reader.Read()
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to read CSV of URLhaus")}
+				return
+			}
+
+			if len(row) != 8 {
+				continue
+			}
+
+			url, err := url.Parse(row[2])
+			if err != nil {
+				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse URL in URLhaus CSV")}
+				return
+			}
+
+			ts, err := time.Parse("2006-01-02 15:04:05", row[1])
+			if err != nil {
+				ch <- &BadEntityMessage{Error: errors.Wrapf(err, "Fail to parse tiemstamp in URLhaus CSV")}
+				return
+			}
+
+			ch <- &BadEntityMessage{
+				Entity: &BadEntity{
+					Name:    url.Hostname(),
+					SavedAt: ts,
+					Src:     "URLhaus",
+					Reason:  row[4],
+				},
 			}
 		}
 	}()
