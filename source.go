@@ -22,6 +22,7 @@ var DefaultSources = []Source{
 	NewMalwareDomains(),
 	NewMVPS(),
 	NewURLhausRecent(),
+	NewURLhausOnline(),
 }
 
 const defaultSourceChanSize = 128
@@ -213,7 +214,6 @@ type URLhausRecent struct {
 func NewURLhausRecent() *URLhausRecent {
 	return &URLhausRecent{
 		URL: "https://urlhaus.abuse.ch/downloads/csv_recent/",
-		//		"https://urlhaus.abuse.ch/downloads/csv_online/",
 	}
 }
 
