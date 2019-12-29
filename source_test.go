@@ -1,9 +1,8 @@
 package badman_test
 
 import (
-	"io/ioutil"
 	"net/http"
-	"strings"
+	"os"
 	"testing"
 
 	"github.com/m-mizutani/badman"
@@ -21,14 +20,13 @@ func (x *dummyHTTPClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestMalwareDomains(t *testing.T) {
-	sampleData := `## This is sample data
-		blue.example.com	phishing	openphish.com	20171117	20160527	20160108
-		orange.example.net	exploit	xxx.com	20171117	20160527	20160108
-`
+	fd, err := os.Open("sample/malwaredomains/domains.txt")
+	require.NoError(t, err)
+
 	dummy := &dummyHTTPClient{
 		Resp: &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(sampleData)),
+			Body:       fd,
 		},
 	}
 
@@ -50,4 +48,33 @@ func TestMalwareDomains(t *testing.T) {
 	assert.Equal(t, "orange.example.net", entities[1].Name)
 	assert.Equal(t, "MalwareDomains", entities[1].Src)
 	assert.Equal(t, "exploit", entities[1].Reason)
+}
+
+func TestMVPs(t *testing.T) {
+	fd, err := os.Open("sample/mvps/hosts.txt")
+	require.NoError(t, err)
+	dummy := &dummyHTTPClient{
+		Resp: &http.Response{
+			StatusCode: 200,
+			Body:       fd,
+		},
+	}
+
+	badman.InjectNewHTTPClient(dummy)
+	defer badman.FixNewHTTPClient()
+
+	var entities []*badman.BadEntity
+	for msg := range badman.NewMVPS().Download() {
+		require.NoError(t, msg.Error)
+		entities = append(entities, msg.Entity)
+	}
+
+	assert.Equal(t, 2, len(entities))
+	assert.Equal(t, "blue.example.com", entities[0].Name)
+	assert.Equal(t, "MVPs", entities[0].Src)
+	assert.Equal(t, "", entities[0].Reason)
+
+	assert.Equal(t, "orange.example.net", entities[1].Name)
+	assert.Equal(t, "MVPs", entities[1].Src)
+	assert.Equal(t, "", entities[1].Reason)
 }
