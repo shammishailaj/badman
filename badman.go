@@ -54,6 +54,7 @@ func (x *BadMan) Download(srcSet []Source) error {
 			if closed >= len(srcSet) {
 				break
 			}
+			continue
 		}
 
 		if msg.Error != nil {
