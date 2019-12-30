@@ -137,3 +137,9 @@ http://www.malwaredomains.com/?page_id=1508
 > All datasets offered by URLhaus can be used for both, commercial and non-commercial purpose without any limitations (CC0)
 
 https://urlhaus.abuse.ch/api/#tos
+
+
+## License
+
+- [MIT License](./LICENSE)
+- Author: Masayoshi Mizutani < mizutani@sfc.wide.ad.jp >
