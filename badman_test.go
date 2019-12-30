@@ -93,6 +93,10 @@ func ExampleBadMan_Dump() {
 
 	// Restore repository from a file
 	rfd, err := os.Open(tmp.Name())
+	if err != nil {
+		log.Fatal("Fail to open a serialized data file:", err)
+	}
+
 	if err := man.Load(rfd); err != nil {
 		log.Fatal("Fail to load repository")
 	}
@@ -104,5 +108,6 @@ func ExampleBadMan_Dump() {
 	fmt.Println(entities[0].Name)
 
 	// TearDown
+	rfd.Close()
 	os.Remove(tmp.Name())
 }
