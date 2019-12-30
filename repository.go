@@ -12,18 +12,12 @@ type BadEntity struct {
 	Reason  string // optional
 }
 
-// BadEntityMessage is messaging format for Dump() to send both of error and
-type BadEntityMessage struct {
-	Error  error
-	Entity *BadEntity
-}
-
 // Repository is interface of data store.
 type Repository interface {
-	Put(entity BadEntity) error
+	Put(entities []*BadEntity) error
 	Get(name string) ([]BadEntity, error)
 	Del(name string) error
-	Dump() chan *BadEntityMessage
+	Dump() chan *EntityQueue
 }
 
 // inMemoryRepository is in-memory type repository.
@@ -42,13 +36,15 @@ func (x *inMemoryRepository) init() {
 	x.data = make(map[string]map[string]BadEntity)
 }
 
-func (x *inMemoryRepository) Put(entity BadEntity) error {
-	srcMap, ok := x.data[entity.Name]
-	if !ok {
-		srcMap = make(map[string]BadEntity)
-		x.data[entity.Name] = srcMap
+func (x *inMemoryRepository) Put(entities []*BadEntity) error {
+	for i := range entities {
+		srcMap, ok := x.data[entities[i].Name]
+		if !ok {
+			srcMap = make(map[string]BadEntity)
+			x.data[entities[i].Name] = srcMap
+		}
+		srcMap[entities[i].Src] = *entities[i]
 	}
-	srcMap[entity.Src] = entity
 	return nil
 }
 
@@ -71,20 +67,17 @@ func (x *inMemoryRepository) Del(name string) error {
 	return nil
 }
 
-func (x *inMemoryRepository) Dump() chan *BadEntityMessage {
-	ch := make(chan *BadEntityMessage)
+func (x *inMemoryRepository) Dump() chan *EntityQueue {
+	ch := make(chan *EntityQueue)
 	go func() {
 		defer close(ch)
 		for _, srcMap := range x.data {
+			var q EntityQueue
 			for _, entity := range srcMap {
-				ch <- &BadEntityMessage{Entity: &entity}
+				q.Entities = append(q.Entities, &entity)
 			}
+			ch <- &q
 		}
 	}()
 	return ch
-}
-
-func (x *inMemoryRepository) Clear() error {
-	x.init()
-	return nil
 }

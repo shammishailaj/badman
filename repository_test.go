@@ -1,6 +1,9 @@
 package badman_test
 
 import (
+	"encoding/binary"
+	"math/rand"
+	"net"
 	"testing"
 	"time"
 
@@ -16,11 +19,16 @@ func TestInMemoryRepository(t *testing.T) {
 }
 
 func repositoryCommonTest(repo badman.Repository, t *testing.T) {
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, rnd.Uint32())
+
+	addr1 := ip.String()
 	domain1 := uuid.New().String() + ".blue.example.com"
 	domain2 := uuid.New().String() + ".orange.example.com"
 
 	e1 := badman.BadEntity{
-		Name:    "10.0.0.1",
+		Name:    addr1,
 		SavedAt: time.Now(),
 		Src:     "tester1",
 	}
@@ -41,7 +49,7 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	}
 
 	// No entity in repository
-	r1, err := repo.Get("10.0.0.1")
+	r1, err := repo.Get(addr1)
 	require.NoError(t, err)
 	assert.Nil(t, r1)
 	r2, err := repo.Get(domain1)
@@ -49,17 +57,14 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	assert.Nil(t, r2)
 
 	// Insert entities
-	require.NoError(t, repo.Put(e1))
-	require.NoError(t, repo.Put(e2))
-	require.NoError(t, repo.Put(e3))
-	require.NoError(t, repo.Put(e4))
+	require.NoError(t, repo.Put([]*badman.BadEntity{&e1, &e2, &e3, &e4}))
 
 	// Get operations
-	r3, err := repo.Get("10.0.0.1")
+	r3, err := repo.Get(addr1)
 	require.NoError(t, err)
 	assert.NotNil(t, r3)
 	require.Equal(t, 1, len(r3))
-	assert.Equal(t, "10.0.0.1", r3[0].Name)
+	assert.Equal(t, addr1, r3[0].Name)
 
 	r4, err := repo.Get(domain1)
 	require.NoError(t, err)
@@ -88,11 +93,13 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 
 	// Dump operation
 	counter := map[string]int{}
-	for msg := range repo.Dump() {
-		require.NoError(t, msg.Error)
-		counter[msg.Entity.Name]++
+	for q := range repo.Dump() {
+		require.NoError(t, q.Error)
+		for _, e := range q.Entities {
+			counter[e.Name]++
+		}
 	}
-	assert.Equal(t, 1, counter["10.0.0.1"])
+	assert.Equal(t, 1, counter[addr1])
 	assert.Equal(t, 2, counter[domain1])
 	assert.Equal(t, 0, counter[domain2])
 }

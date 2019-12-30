@@ -14,8 +14,8 @@ const jsonSerializerBufSize = 32
 
 // Serializer converts array of BadEntity to byte array and the reverse.
 type Serializer interface {
-	Serialize(ch chan *BadEntityMessage, w io.Writer) error
-	Deserialize(r io.Reader) chan *BadEntityMessage
+	Serialize(ch chan *EntityQueue, w io.Writer) error
+	Deserialize(r io.Reader) chan *EntityQueue
 }
 
 // JSONSerializer is simple line json serializer
@@ -27,20 +27,22 @@ func NewJSONSerializer() *JSONSerializer {
 }
 
 // Serialize of JSONSerializer marshals BadEntity to JSON and append line feed at tail.
-func (x *JSONSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error {
-	for msg := range ch {
-		if msg.Error != nil {
-			return msg.Error
+func (x *JSONSerializer) Serialize(ch chan *EntityQueue, w io.Writer) error {
+	for q := range ch {
+		if q.Error != nil {
+			return q.Error
 		}
 
-		raw, err := json.Marshal(msg.Entity)
-		if err != nil {
-			return errors.Wrapf(err, "Fail to marshal entity: %v", msg.Entity)
-		}
+		for _, e := range q.Entities {
+			raw, err := json.Marshal(e)
+			if err != nil {
+				return errors.Wrapf(err, "Fail to marshal entity: %v", e)
+			}
 
-		line := append(raw, []byte("\n")...)
-		if _, err := w.Write(line); err != nil {
-			return errors.Wrapf(err, "Fail to write entity: %v", msg.Entity)
+			line := append(raw, []byte("\n")...)
+			if _, err := w.Write(line); err != nil {
+				return errors.Wrapf(err, "Fail to write entity: %v", e)
+			}
 		}
 	}
 
@@ -48,8 +50,8 @@ func (x *JSONSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error
 }
 
 // Deserialize of JSONSerializer reads reader and unmarshal nd-json.
-func (x *JSONSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
-	ch := make(chan *BadEntityMessage, jsonSerializerBufSize)
+func (x *JSONSerializer) Deserialize(r io.Reader) chan *EntityQueue {
+	ch := make(chan *EntityQueue, jsonSerializerBufSize)
 	go func() {
 		defer close(ch)
 		scanner := bufio.NewScanner(r)
@@ -57,13 +59,13 @@ func (x *JSONSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
 			var entity BadEntity
 			raw := scanner.Bytes()
 			if err := json.Unmarshal(raw, &entity); err != nil {
-				ch <- &BadEntityMessage{
+				ch <- &EntityQueue{
 					Error: errors.Wrapf(err, "Fail to unmarshal serialized entity as json: %s", string(raw)),
 				}
 				return
 			}
 
-			ch <- &BadEntityMessage{Entity: &entity}
+			ch <- &EntityQueue{Entities: []*BadEntity{&entity}}
 		}
 	}()
 
@@ -79,22 +81,24 @@ func NewGzipJSONSerializer() *GzipJSONSerializer {
 }
 
 // Serialize of GzipJSONSerializer marshals BadEntity to gzipped JSON and append line feed at tail.
-func (x *GzipJSONSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error {
+func (x *GzipJSONSerializer) Serialize(ch chan *EntityQueue, w io.Writer) error {
 	writer := gzip.NewWriter(w)
 
-	for msg := range ch {
-		if msg.Error != nil {
-			return msg.Error
+	for q := range ch {
+		if q.Error != nil {
+			return q.Error
 		}
 
-		raw, err := json.Marshal(msg.Entity)
-		if err != nil {
-			return errors.Wrapf(err, "Fail to marshal entity: %v", msg.Entity)
-		}
+		for _, e := range q.Entities {
+			raw, err := json.Marshal(e)
+			if err != nil {
+				return errors.Wrapf(err, "Fail to marshal entity: %v", e)
+			}
 
-		line := append(raw, []byte("\n")...)
-		if _, err := writer.Write(line); err != nil {
-			return errors.Wrapf(err, "Fail to write entity: %v", msg.Entity)
+			line := append(raw, []byte("\n")...)
+			if _, err := writer.Write(line); err != nil {
+				return errors.Wrapf(err, "Fail to write entity: %v", e)
+			}
 		}
 	}
 
@@ -106,13 +110,13 @@ func (x *GzipJSONSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) e
 }
 
 // Deserialize of GzipJSONSerializer reads reader and unmarshal gzipped nd-json.
-func (x *GzipJSONSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
-	ch := make(chan *BadEntityMessage, jsonSerializerBufSize)
+func (x *GzipJSONSerializer) Deserialize(r io.Reader) chan *EntityQueue {
+	ch := make(chan *EntityQueue, jsonSerializerBufSize)
 	go func() {
 		defer close(ch)
 		reader, err := gzip.NewReader(r)
 		if err != nil {
-			ch <- &BadEntityMessage{
+			ch <- &EntityQueue{
 				Error: errors.Wrapf(err, "Fail to create a new reader for GzipJSONSerializer"),
 			}
 			return
@@ -123,13 +127,13 @@ func (x *GzipJSONSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
 			var entity BadEntity
 			raw := scanner.Bytes()
 			if err := json.Unmarshal(raw, &entity); err != nil {
-				ch <- &BadEntityMessage{
+				ch <- &EntityQueue{
 					Error: errors.Wrapf(err, "Fail to unmarshal serialized entity as json: %s", string(raw)),
 				}
 				return
 			}
 
-			ch <- &BadEntityMessage{Entity: &entity}
+			ch <- &EntityQueue{Entities: []*BadEntity{&entity}}
 		}
 	}()
 
@@ -145,16 +149,18 @@ func NewMsgpackSerializer() *MsgpackSerializer {
 }
 
 // Serialize of MsgpackSerializer encodes BadEntity to MessagePack format.
-func (x *MsgpackSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error {
+func (x *MsgpackSerializer) Serialize(ch chan *EntityQueue, w io.Writer) error {
 	enc := msgpack.NewEncoder(w)
 
-	for msg := range ch {
-		if msg.Error != nil {
-			return msg.Error
+	for q := range ch {
+		if q.Error != nil {
+			return q.Error
 		}
 
-		if err := enc.Encode(msg.Entity); err != nil {
-			return errors.Wrapf(err, "Fail to encode entity by MsgpackSerializer: %v", msg.Entity)
+		for _, e := range q.Entities {
+			if err := enc.Encode(e); err != nil {
+				return errors.Wrapf(err, "Fail to encode entity by MsgpackSerializer: %v", e)
+			}
 		}
 	}
 
@@ -162,8 +168,8 @@ func (x *MsgpackSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) er
 }
 
 // Deserialize of MsgpackSerializer reads reader and unmarshal gzipped nd-json.
-func (x *MsgpackSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
-	ch := make(chan *BadEntityMessage, jsonSerializerBufSize)
+func (x *MsgpackSerializer) Deserialize(r io.Reader) chan *EntityQueue {
+	ch := make(chan *EntityQueue, jsonSerializerBufSize)
 
 	go func() {
 		defer close(ch)
@@ -175,13 +181,13 @@ func (x *MsgpackSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				ch <- &BadEntityMessage{
+				ch <- &EntityQueue{
 					Error: errors.Wrapf(err, "Fail to decode msgpack format"),
 				}
 				return
 			}
 
-			ch <- &BadEntityMessage{Entity: &entity}
+			ch <- &EntityQueue{Entities: []*BadEntity{&entity}}
 		}
 	}()
 
@@ -197,17 +203,19 @@ func NewGzipMsgpackSerializer() *GzipMsgpackSerializer {
 }
 
 // Serialize of GzipMsgpackSerializer encodes BadEntity to MessagePack format.
-func (x *GzipMsgpackSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer) error {
+func (x *GzipMsgpackSerializer) Serialize(ch chan *EntityQueue, w io.Writer) error {
 	writer := gzip.NewWriter(w)
 	enc := msgpack.NewEncoder(writer)
 
-	for msg := range ch {
-		if msg.Error != nil {
-			return msg.Error
+	for q := range ch {
+		if q.Error != nil {
+			return q.Error
 		}
 
-		if err := enc.Encode(msg.Entity); err != nil {
-			return errors.Wrapf(err, "Fail to encode entity by GzipMsgpackSerializer: %v", msg.Entity)
+		for _, e := range q.Entities {
+			if err := enc.Encode(e); err != nil {
+				return errors.Wrapf(err, "Fail to encode entity by GzipMsgpackSerializer: %v", e)
+			}
 		}
 	}
 
@@ -219,14 +227,14 @@ func (x *GzipMsgpackSerializer) Serialize(ch chan *BadEntityMessage, w io.Writer
 }
 
 // Deserialize of GzipMsgpackSerializer reads reader and unmarshal gzipped nd-json.
-func (x *GzipMsgpackSerializer) Deserialize(r io.Reader) chan *BadEntityMessage {
-	ch := make(chan *BadEntityMessage, jsonSerializerBufSize)
+func (x *GzipMsgpackSerializer) Deserialize(r io.Reader) chan *EntityQueue {
+	ch := make(chan *EntityQueue, jsonSerializerBufSize)
 
 	go func() {
 		defer close(ch)
 		reader, err := gzip.NewReader(r)
 		if err != nil {
-			ch <- &BadEntityMessage{
+			ch <- &EntityQueue{
 				Error: errors.Wrapf(err, "Fail to create a new reader for GzipJSONSerializer"),
 			}
 			return
@@ -240,13 +248,13 @@ func (x *GzipMsgpackSerializer) Deserialize(r io.Reader) chan *BadEntityMessage 
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				ch <- &BadEntityMessage{
+				ch <- &EntityQueue{
 					Error: errors.Wrapf(err, "Fail to decode msgpack format"),
 				}
 				return
 			}
 
-			ch <- &BadEntityMessage{Entity: &entity}
+			ch <- &EntityQueue{Entities: []*BadEntity{&entity}}
 		}
 	}()
 

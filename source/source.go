@@ -29,10 +29,10 @@ func newNormalHTTPClient() httpClient { return &http.Client{} }
 
 var newHTTPClient = newNormalHTTPClient
 
-func getHTTPBody(url string, ch chan *badman.BadEntityMessage) io.Reader {
+func getHTTPBody(url string, ch chan *badman.EntityQueue) io.Reader {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		ch <- &badman.BadEntityMessage{
+		ch <- &badman.EntityQueue{
 			Error: errors.Wrapf(err, "Fail to craete new MalwareDomains HTTP request to: %s", url),
 		}
 		return nil
@@ -41,13 +41,13 @@ func getHTTPBody(url string, ch chan *badman.BadEntityMessage) io.Reader {
 	client := newHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
-		ch <- &badman.BadEntityMessage{
+		ch <- &badman.EntityQueue{
 			Error: errors.Wrapf(err, "Fail to send HTTP request to: %s", url),
 		}
 		return nil
 	}
 	if resp.StatusCode != 200 {
-		ch <- &badman.BadEntityMessage{
+		ch <- &badman.EntityQueue{
 			Error: errors.Wrapf(err, "Unexpected status code (%d): %s", resp.StatusCode, url),
 		}
 		return nil

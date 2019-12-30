@@ -22,7 +22,7 @@ func New() *BadMan {
 
 // Insert adds an entity one by one. It's expected to use adding IoC by feed or something like that.
 func (x *BadMan) Insert(entity BadEntity) error {
-	return x.repo.Put(entity)
+	return x.repo.Put([]*BadEntity{&entity})
 }
 
 // Lookup searches BadEntity (both of IP address and domain name). If not found, the function returns ([]BadEntity{}, nil). A reason to return list of BadEntity is that multiple blacklists may have same entity.
@@ -32,7 +32,7 @@ func (x *BadMan) Lookup(name string) ([]BadEntity, error) {
 
 // Download accesses blacklist data via Sources and store entities that is included in blacklist into repository.
 func (x *BadMan) Download(srcSet []Source) error {
-	msgCh := make(chan *BadEntityMessage, 128)
+	msgCh := make(chan *EntityQueue, 128)
 
 	for i := 0; i < len(srcSet); i++ {
 		src := srcSet[i]
@@ -43,13 +43,13 @@ func (x *BadMan) Download(srcSet []Source) error {
 			}
 
 			// Send empty message to notify termination
-			defer func() { msgCh <- &BadEntityMessage{} }()
+			defer func() { msgCh <- &EntityQueue{} }()
 		}()
 	}
 
 	closed := 0
-	for msg := range msgCh {
-		if msg.Entity == nil && msg.Error == nil {
+	for q := range msgCh {
+		if len(q.Entities) == 0 && q.Error == nil {
 			closed++
 			if closed >= len(srcSet) {
 				break
@@ -57,11 +57,11 @@ func (x *BadMan) Download(srcSet []Source) error {
 			continue
 		}
 
-		if msg.Error != nil {
-			return errors.Wrap(msg.Error, "Fail to download from source")
+		if q.Error != nil {
+			return errors.Wrap(q.Error, "Fail to download from source")
 		}
-		if err := x.repo.Put(*msg.Entity); err != nil {
-			return errors.Wrapf(err, "Fail to put downloaded entity: %v", msg.Entity)
+		if err := x.repo.Put(q.Entities); err != nil {
+			return errors.Wrapf(err, "Fail to put downloaded entity: %v", q.Entities)
 		}
 	}
 
@@ -84,7 +84,7 @@ func (x *BadMan) Load(r io.Reader) error {
 			return msg.Error
 		}
 
-		if err := x.repo.Put(*msg.Entity); err != nil {
+		if err := x.repo.Put(msg.Entities); err != nil {
 			return err
 		}
 	}
@@ -101,7 +101,7 @@ func (x *BadMan) ReplaceRepository(repo Repository) error {
 			return msg.Error
 		}
 
-		if err := repo.Put(*msg.Entity); err != nil {
+		if err := repo.Put(msg.Entities); err != nil {
 			return err
 		}
 	}

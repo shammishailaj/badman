@@ -32,7 +32,7 @@ func TestGzipMsgpackSerializer(t *testing.T) {
 
 func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 	t1, t2, t3 := time.Now(), time.Now(), time.Now()
-	entities := []badman.BadEntity{
+	entities := []*badman.BadEntity{
 		{
 			Name:    "blue",
 			SavedAt: t1,
@@ -51,11 +51,9 @@ func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 	}
 
 	buf := &bytes.Buffer{}
-	ch := make(chan *badman.BadEntityMessage, 1)
+	ch := make(chan *badman.EntityQueue, 1)
 	go func() {
-		for i := range entities {
-			ch <- &badman.BadEntityMessage{Entity: &entities[i]}
-		}
+		ch <- &badman.EntityQueue{Entities: entities}
 		close(ch)
 	}()
 
@@ -68,24 +66,23 @@ func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 	reader := bytes.NewReader(raw)
 	readCh := ser.Deserialize(reader)
 
-	m1 := <-readCh
-	require.NoError(t, m1.Error)
-	assert.Equal(t, "blue", m1.Entity.Name)
-	assert.Equal(t, "tester1", m1.Entity.Src)
-	assert.Equal(t, t1.Unix(), m1.Entity.SavedAt.Unix())
+	var recvEntities []*badman.BadEntity
+	for q := range readCh {
+		require.NoError(t, q.Error)
+		for _, e := range q.Entities {
+			recvEntities = append(recvEntities, e)
+		}
+	}
 
-	m2 := <-readCh
-	require.NoError(t, m2.Error)
-	assert.Equal(t, "orange", m2.Entity.Name)
-	assert.Equal(t, "tester1", m2.Entity.Src)
-	assert.Equal(t, t2.Unix(), m2.Entity.SavedAt.Unix())
+	assert.Equal(t, "blue", recvEntities[0].Name)
+	assert.Equal(t, "tester1", recvEntities[0].Src)
+	assert.Equal(t, t1.Unix(), recvEntities[0].SavedAt.Unix())
 
-	m3 := <-readCh
-	require.NoError(t, m3.Error)
-	assert.Equal(t, "red", m3.Entity.Name)
-	assert.Equal(t, "tester1", m3.Entity.Src)
-	assert.Equal(t, t3.Unix(), m3.Entity.SavedAt.Unix())
+	assert.Equal(t, "orange", recvEntities[1].Name)
+	assert.Equal(t, "tester1", recvEntities[1].Src)
+	assert.Equal(t, t2.Unix(), recvEntities[1].SavedAt.Unix())
 
-	_, ok := <-readCh
-	assert.False(t, ok)
+	assert.Equal(t, "red", recvEntities[2].Name)
+	assert.Equal(t, "tester1", recvEntities[2].Src)
+	assert.Equal(t, t3.Unix(), recvEntities[2].SavedAt.Unix())
 }

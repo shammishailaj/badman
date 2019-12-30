@@ -37,9 +37,9 @@ func TestMalwareDomains(t *testing.T) {
 
 	var entities []*badman.BadEntity
 	src := source.NewMalwareDomains()
-	for msg := range src.Download() {
-		require.NoError(t, msg.Error)
-		entities = append(entities, msg.Entity)
+	for q := range src.Download() {
+		require.NoError(t, q.Error)
+		entities = append(entities, q.Entities...)
 	}
 
 	assert.Equal(t, 2, len(entities))
@@ -66,9 +66,9 @@ func TestMVPs(t *testing.T) {
 	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range source.NewMVPS().Download() {
-		require.NoError(t, msg.Error)
-		entities = append(entities, msg.Entity)
+	for q := range source.NewMVPS().Download() {
+		require.NoError(t, q.Error)
+		entities = append(entities, q.Entities...)
 	}
 
 	assert.Equal(t, 2, len(entities))
@@ -95,9 +95,9 @@ func TestURLhausRecent(t *testing.T) {
 	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range source.NewURLhausRecent().Download() {
-		require.NoError(t, msg.Error)
-		entities = append(entities, msg.Entity)
+	for q := range source.NewURLhausRecent().Download() {
+		require.NoError(t, q.Error)
+		entities = append(entities, q.Entities...)
 	}
 
 	assert.Equal(t, "/downloads/csv_recent/", dummy.Req.URL.Path)
@@ -126,9 +126,9 @@ func TestURLhausOnline(t *testing.T) {
 	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range source.NewURLhausOnline().Download() {
-		require.NoError(t, msg.Error)
-		entities = append(entities, msg.Entity)
+	for q := range source.NewURLhausOnline().Download() {
+		require.NoError(t, q.Error)
+		entities = append(entities, q.Entities...)
 	}
 
 	assert.Equal(t, "/downloads/csv_online/", dummy.Req.URL.Path)

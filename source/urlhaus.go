@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadURLhasu(csvURL string, ch chan *badman.BadEntityMessage) {
+func downloadURLhasu(csvURL string, ch chan *badman.EntityQueue) {
 	defer close(ch)
 
 	body := getHTTPBody(csvURL, ch)
@@ -26,7 +26,7 @@ func downloadURLhasu(csvURL string, ch chan *badman.BadEntityMessage) {
 		if err == io.EOF {
 			return
 		} else if err != nil {
-			ch <- &badman.BadEntityMessage{
+			ch <- &badman.EntityQueue{
 				Error: errors.Wrapf(err, "Fail to read CSV of URLhaus"),
 			}
 			return
@@ -38,7 +38,7 @@ func downloadURLhasu(csvURL string, ch chan *badman.BadEntityMessage) {
 
 		url, err := url.Parse(row[2])
 		if err != nil {
-			ch <- &badman.BadEntityMessage{
+			ch <- &badman.EntityQueue{
 				Error: errors.Wrapf(err, "Fail to parse URL in URLhaus CSV"),
 			}
 			return
@@ -46,18 +46,20 @@ func downloadURLhasu(csvURL string, ch chan *badman.BadEntityMessage) {
 
 		ts, err := time.Parse("2006-01-02 15:04:05", row[1])
 		if err != nil {
-			ch <- &badman.BadEntityMessage{
+			ch <- &badman.EntityQueue{
 				Error: errors.Wrapf(err, "Fail to parse tiemstamp in URLhaus CSV"),
 			}
 			return
 		}
 
-		ch <- &badman.BadEntityMessage{
-			Entity: &badman.BadEntity{
-				Name:    url.Hostname(),
-				SavedAt: ts,
-				Src:     "URLhaus",
-				Reason:  row[4],
+		ch <- &badman.EntityQueue{
+			Entities: []*badman.BadEntity{
+				{
+					Name:    url.Hostname(),
+					SavedAt: ts,
+					Src:     "URLhaus",
+					Reason:  row[4],
+				},
 			},
 		}
 	}
@@ -77,8 +79,8 @@ func NewURLhausRecent() *URLhausRecent {
 }
 
 // Download of URLhausRecent downloads domains.txt and parses to extract domain names.
-func (x *URLhausRecent) Download() chan *badman.BadEntityMessage {
-	ch := make(chan *badman.BadEntityMessage, defaultSourceChanSize)
+func (x *URLhausRecent) Download() chan *badman.EntityQueue {
+	ch := make(chan *badman.EntityQueue, defaultSourceChanSize)
 	go downloadURLhasu(x.URL, ch)
 	return ch
 }
@@ -97,8 +99,8 @@ func NewURLhausOnline() *URLhausOnline {
 }
 
 // Download of URLhausOnline downloads domains.txt and parses to extract domain names.
-func (x *URLhausOnline) Download() chan *badman.BadEntityMessage {
-	ch := make(chan *badman.BadEntityMessage, defaultSourceChanSize)
+func (x *URLhausOnline) Download() chan *badman.EntityQueue {
+	ch := make(chan *badman.EntityQueue, defaultSourceChanSize)
 	go downloadURLhasu(x.URL, ch)
 	return ch
 }
