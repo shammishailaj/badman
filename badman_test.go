@@ -56,9 +56,8 @@ func ExampleBadMan_Insert() {
 		log.Fatal("Fail to lookup an entity:", err)
 	}
 
-	// Output:
-	// 10.0.0.1
 	fmt.Println(entities[0].Name)
+	// Output: 10.0.0.1
 }
 
 func ExampleBadMan_Dump() {
@@ -103,11 +102,11 @@ func ExampleBadMan_Dump() {
 
 	entities, _ := man.Lookup("orange.example.com")
 
-	// Output:
-	// orange.example.com
 	fmt.Println(entities[0].Name)
 
 	// TearDown
 	rfd.Close()
 	os.Remove(tmp.Name())
+
+	// Output: orange.example.com
 }
