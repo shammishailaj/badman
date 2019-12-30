@@ -3,7 +3,7 @@
 
 **B**lacklisted **A**ddress and **D**omain name **Man**ager is tool to manage blacklist network entities. The tool provides downloader/save 
 
-## Library Examples
+## Examples
 
 ### Getting Started
 
@@ -29,19 +29,19 @@ func main() {
 	fd, err := os.Open("ipaddrs_in_traffic_logs.txt")
 	if err != nil {
 		log.Fatal("Fail to open a file:", err)
-    }
-    defer fd.Close()
+	}
+	defer fd.Close()
 
 	scanner := bufio.NewScanner(fd)
 	for scanner.Scan() {
-		entity, err := man.Lookup(scanner.Text())
+		entities, err := man.Lookup(scanner.Text())
 		if err != nil {
 			log.Fatal("Fail to lookup:", err)
 		}
 
-		if entity != nil {
+		if len(entities) > 0 {
 			log.Printf("Matched %s in %s list (reason: %s)\n",
-				entity.Name, entity.Src, entity.Reason)
+				entities[0].Name, entities[0].Src, entities[0].Reason)
 		}
 	}
 }
