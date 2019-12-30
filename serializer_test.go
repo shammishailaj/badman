@@ -69,9 +69,7 @@ func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 	var recvEntities []*badman.BadEntity
 	for q := range readCh {
 		require.NoError(t, q.Error)
-		for _, e := range q.Entities {
-			recvEntities = append(recvEntities, e)
-		}
+		recvEntities = append(recvEntities, q.Entities...)
 	}
 
 	assert.Equal(t, "blue", recvEntities[0].Name)
