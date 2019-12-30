@@ -23,9 +23,11 @@ func NewMVPS() *MVPS {
 // Download of MVPS downloads domains.txt and parses to extract domain names.
 func (x *MVPS) Download() chan *badman.EntityQueue {
 	ch := make(chan *badman.EntityQueue, defaultSourceChanSize)
+	bufferSize := 128
 
 	go func() {
 		defer close(ch)
+		buffer := []*badman.BadEntity{}
 
 		now := time.Now()
 		body := getHTTPBody(x.URL, ch)
@@ -39,16 +41,21 @@ func (x *MVPS) Download() chan *badman.EntityQueue {
 			row := strings.Split(line, " ")
 
 			if len(row) == 2 && row[0] == "0.0.0.0" {
-				ch <- &badman.EntityQueue{
-					Entities: []*badman.BadEntity{
-						{
-							Name:    row[1],
-							SavedAt: now,
-							Src:     "MVPs",
-						},
-					},
+				buffer = append(buffer, &badman.BadEntity{
+					Name:    row[1],
+					SavedAt: now,
+					Src:     "MVPs",
+				})
+
+				if len(buffer) >= bufferSize {
+					ch <- &badman.EntityQueue{Entities: buffer}
+					buffer = []*badman.BadEntity{}
 				}
 			}
+		}
+
+		if len(buffer) > 0 {
+			ch <- &badman.EntityQueue{Entities: buffer}
 		}
 	}()
 

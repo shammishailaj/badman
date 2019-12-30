@@ -12,6 +12,14 @@ import (
 
 func downloadURLhasu(csvURL string, ch chan *badman.EntityQueue) {
 	defer close(ch)
+	bufferSize := 128
+	buffer := []*badman.BadEntity{}
+
+	defer func() {
+		if len(buffer) > 0 {
+			ch <- &badman.EntityQueue{Entities: buffer}
+		}
+	}()
 
 	body := getHTTPBody(csvURL, ch)
 	if body == nil {
@@ -52,15 +60,16 @@ func downloadURLhasu(csvURL string, ch chan *badman.EntityQueue) {
 			return
 		}
 
-		ch <- &badman.EntityQueue{
-			Entities: []*badman.BadEntity{
-				{
-					Name:    url.Hostname(),
-					SavedAt: ts,
-					Src:     "URLhaus",
-					Reason:  row[4],
-				},
-			},
+		buffer = append(buffer, &badman.BadEntity{
+			Name:    url.Hostname(),
+			SavedAt: ts,
+			Src:     "URLhaus",
+			Reason:  row[4],
+		})
+
+		if len(buffer) >= bufferSize {
+			ch <- &badman.EntityQueue{Entities: buffer}
+			buffer = []*badman.BadEntity{}
 		}
 	}
 }
