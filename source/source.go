@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DefaultSources is default set of blacklist source that is maintained by badman.
-var DefaultSources = []badman.Source{
+// DefaultSet is default set of blacklist source that is maintained by badman.
+var DefaultSet = []badman.Source{
 	NewMalwareDomains(),
 	NewMVPS(),
 	NewURLhausRecent(),
