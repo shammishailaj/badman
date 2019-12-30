@@ -20,6 +20,16 @@ func TestGzipJSONSerializer(t *testing.T) {
 	serializerCommonTest(t, ser)
 }
 
+func TestMsgpackSerializer(t *testing.T) {
+	ser := badman.NewMsgpackSerializer()
+	serializerCommonTest(t, ser)
+}
+
+func TestGzipMsgpackSerializer(t *testing.T) {
+	ser := badman.NewGzipMsgpackSerializer()
+	serializerCommonTest(t, ser)
+}
+
 func serializerCommonTest(t *testing.T, ser badman.Serializer) {
 	t1, t2, t3 := time.Now(), time.Now(), time.Now()
 	entities := []badman.BadEntity{
