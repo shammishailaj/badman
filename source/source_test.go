@@ -1,4 +1,4 @@
-package badman_test
+package source_test
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/m-mizutani/badman"
+	"github.com/m-mizutani/badman/source"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func (x *dummyHTTPClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestMalwareDomains(t *testing.T) {
-	fd, err := os.Open("sample/malwaredomains/domains.txt")
+	fd, err := os.Open("test/malwaredomains/domains.txt")
 	require.NoError(t, err)
 
 	dummy := &dummyHTTPClient{
@@ -31,11 +32,11 @@ func TestMalwareDomains(t *testing.T) {
 		},
 	}
 
-	badman.InjectNewHTTPClient(dummy)
-	defer badman.FixNewHTTPClient()
+	source.InjectNewHTTPClient(dummy)
+	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	src := badman.NewMalwareDomains()
+	src := source.NewMalwareDomains()
 	for msg := range src.Download() {
 		require.NoError(t, msg.Error)
 		entities = append(entities, msg.Entity)
@@ -52,7 +53,7 @@ func TestMalwareDomains(t *testing.T) {
 }
 
 func TestMVPs(t *testing.T) {
-	fd, err := os.Open("sample/mvps/hosts.txt")
+	fd, err := os.Open("test/mvps/hosts.txt")
 	require.NoError(t, err)
 	dummy := &dummyHTTPClient{
 		Resp: &http.Response{
@@ -61,11 +62,11 @@ func TestMVPs(t *testing.T) {
 		},
 	}
 
-	badman.InjectNewHTTPClient(dummy)
-	defer badman.FixNewHTTPClient()
+	source.InjectNewHTTPClient(dummy)
+	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range badman.NewMVPS().Download() {
+	for msg := range source.NewMVPS().Download() {
 		require.NoError(t, msg.Error)
 		entities = append(entities, msg.Entity)
 	}
@@ -81,7 +82,7 @@ func TestMVPs(t *testing.T) {
 }
 
 func TestURLhausRecent(t *testing.T) {
-	fd, err := os.Open("sample/urlhaus/test.csv")
+	fd, err := os.Open("test/urlhaus/test.csv")
 	require.NoError(t, err)
 	dummy := &dummyHTTPClient{
 		Resp: &http.Response{
@@ -90,11 +91,11 @@ func TestURLhausRecent(t *testing.T) {
 		},
 	}
 
-	badman.InjectNewHTTPClient(dummy)
-	defer badman.FixNewHTTPClient()
+	source.InjectNewHTTPClient(dummy)
+	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range badman.NewURLhausRecent().Download() {
+	for msg := range source.NewURLhausRecent().Download() {
 		require.NoError(t, msg.Error)
 		entities = append(entities, msg.Entity)
 	}
@@ -112,7 +113,7 @@ func TestURLhausRecent(t *testing.T) {
 }
 
 func TestURLhausOnline(t *testing.T) {
-	fd, err := os.Open("sample/urlhaus/test.csv")
+	fd, err := os.Open("test/urlhaus/test.csv")
 	require.NoError(t, err)
 	dummy := &dummyHTTPClient{
 		Resp: &http.Response{
@@ -121,11 +122,11 @@ func TestURLhausOnline(t *testing.T) {
 		},
 	}
 
-	badman.InjectNewHTTPClient(dummy)
-	defer badman.FixNewHTTPClient()
+	source.InjectNewHTTPClient(dummy)
+	defer source.FixNewHTTPClient()
 
 	var entities []*badman.BadEntity
-	for msg := range badman.NewURLhausOnline().Download() {
+	for msg := range source.NewURLhausOnline().Download() {
 		require.NoError(t, msg.Error)
 		entities = append(entities, msg.Entity)
 	}
