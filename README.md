@@ -81,6 +81,11 @@ func main() {
 ```go
 	man := badman.New()
 
+	wfd, err := os.Create("repo.dat")
+	if err != nil {
+		log.Fatal("Fail to create a file:", err)
+	}
+
 	// Save current repository to a file
 	if err := man.Dump(wfd); err != nil {
 		log.Fatal("Fail to dump repository")
@@ -89,9 +94,13 @@ func main() {
 
 	// Restore repository from a file
 	rfd, err := os.Open("repo.dat")
+	if err != nil {
+		log.Fatal("Fail to open a serialized data file:", err)
+	}
+
 	if err := man.Load(rfd); err != nil {
 		log.Fatal("Fail to load repository")
-    }
+	}
 ```
 
 ## Use case
