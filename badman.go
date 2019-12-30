@@ -16,7 +16,7 @@ type BadMan struct {
 func New() *BadMan {
 	return &BadMan{
 		repo: NewInMemoryRepository(),
-		ser:  NewJSONSerializer(),
+		ser:  NewGzipMsgpackSerializer(),
 	}
 }
 
