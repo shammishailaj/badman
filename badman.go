@@ -1,6 +1,7 @@
 package badman
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -70,7 +71,12 @@ func (x *BadMan) Download(srcSet []Source) error {
 
 // Dump output serialized data into w to save current repository.
 func (x *BadMan) Dump(w io.Writer) error {
-	if err := x.ser.Serialize(x.repo.Dump(), w); err != nil {
+	ch := x.repo.Dump()
+	if ch == nil {
+		return fmt.Errorf("This repository does not support Dump()")
+	}
+
+	if err := x.ser.Serialize(ch, w); err != nil {
 		return err
 	}
 
@@ -94,20 +100,9 @@ func (x *BadMan) Load(r io.Reader) error {
 // -----------------------------------
 // Utilities
 
-// ReplaceRepository changes Repository to store entities. Entities in old repository are copied to new repository before replacing.
-func (x *BadMan) ReplaceRepository(repo Repository) error {
-	for msg := range x.repo.Dump() {
-		if msg.Error != nil {
-			return msg.Error
-		}
-
-		if err := repo.Put(msg.Entities); err != nil {
-			return err
-		}
-	}
-
+// ReplaceRepository changes Repository to store entities. Entities in old repository are removed.
+func (x *BadMan) ReplaceRepository(repo Repository) {
 	x.repo = repo
-	return nil
 }
 
 // ReplaceSerializer just changes Serializer with ser.

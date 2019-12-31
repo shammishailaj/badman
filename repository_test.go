@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"math/rand"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -15,6 +16,16 @@ import (
 
 func TestInMemoryRepository(t *testing.T) {
 	repo := badman.NewInMemoryRepository()
+	repositoryCommonTest(repo, t)
+}
+
+func TestDynamoRepository(t *testing.T) {
+	region, tableName := os.Getenv("TABLE_REGION"), os.Getenv("TABLE_NAME")
+	if region == "" || tableName == "" {
+		t.Skip("TABLE_REGION or TABLE_NAME is not available")
+	}
+
+	repo := badman.NewDynamoRepository(region, tableName)
 	repositoryCommonTest(repo, t)
 }
 
@@ -92,14 +103,17 @@ func repositoryCommonTest(repo badman.Repository, t *testing.T) {
 	assert.Equal(t, 0, len(r6))
 
 	// Dump operation
-	counter := map[string]int{}
-	for q := range repo.Dump() {
-		require.NoError(t, q.Error)
-		for _, e := range q.Entities {
-			counter[e.Name]++
+	ch := repo.Dump()
+	if ch != nil {
+		counter := map[string]int{}
+		for q := range repo.Dump() {
+			require.NoError(t, q.Error)
+			for _, e := range q.Entities {
+				counter[e.Name]++
+			}
 		}
+		assert.Equal(t, 1, counter[addr1])
+		assert.Equal(t, 2, counter[domain1])
+		assert.Equal(t, 0, counter[domain2])
 	}
-	assert.Equal(t, 1, counter[addr1])
-	assert.Equal(t, 2, counter[domain1])
-	assert.Equal(t, 0, counter[domain2])
 }
