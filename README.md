@@ -1,7 +1,7 @@
 # badman [![Travis-CI](https://travis-ci.org/m-mizutani/badman.svg)](https://travis-ci.org/m-mizutani/badman) [![Report card](https://goreportcard.com/badge/github.com/m-mizutani/badman)](https://goreportcard.com/report/github.com/m-mizutani/badman) [![GoDoc](https://godoc.org/github.com/m-mizutani/badman?status.svg)](https://godoc.org/github.com/m-mizutani/badman)
 
 
-**B**lacklisted **A**ddress and **D**omain name **Man**ager is tool to manage blacklist network entities. The tool provides downloader/save 
+**B**lacklisted **A**ddress and **D**omain name **Man**ager is tool to manage blacklist network entities. The tool provides download, save and restore capability about blacklist of IP address and domain name.
 
 ## Examples
 
@@ -50,7 +50,7 @@ func main() {
 `ipaddrs_in_traffic_logs.txt` includes only IP addresses line by line. `BadMan` downloads backlists from default sources (blacklist providers) and store entities in the blacklist into own repository. Default settings are below. After downloading blacklist, `Lookup` method is enabled to search given name (IP address or domain name, both are accepted) from the repository.
 
 - Default sources: `MVPS`, `MalwareDomains`, `URLhausRecent`, `URLhausOnline`
-- Default repository: `inMemoryRepository`
+- Default repository: `inMemoryRepository`, `dynamoRepository`
 
 ### Insert a new bad entity one by one
 
@@ -103,13 +103,48 @@ func main() {
 	}
 ```
 
+### Change blacklist sources
+
+```go
+	man := badman.New()
+	set := []badman.Source{
+		source.NewURLhausRecent(),
+		source.NewURLhausOnline(),
+	}
+	if err := man.Download(set); err != nil {
+		log.Fatal("Fail to download:", err)
+	}
+```
+
+Usually you can use `source.DefaultSet` to download all badman supported blacklist providers (sources). However, if you want to use specific sources, you can choose your preffered sources. For example, above sample code downloads only URLhaus blacklist.
+
+### Change repository
+
+```go
+	dynamoTableRegion, dynamoTableName := "ap-northeast-1", "your-table-name"
+	man := badman.New()
+	man.ReplaceRepository(badman.NewDynamoRepository(dynamoTableRegion, dynamoTableName))
+```
+
+Repository can be replaced by `ReplaceRepository()` with other repository. When replacing, blacklist data in old repository is NOT copied to new repository. Below 2 repositories are prepared in this pacakge.
+
+- `inMemoryRepository`
+- `dynamoRepository`
+
+Also, you can use own repository that is implemented `badman.Repository` interface.
+
 ## Use case
 
 ### Stateless (Serveless model)
 
 ![Serverless Architecture for AWS](https://user-images.githubusercontent.com/605953/71566177-b844e400-2af8-11ea-8c65-bc5e8757be9e.png)
 
+
+
 ### Stateful (Server model)
+
+<img width="640" alt="Screen Shot 2020-01-01 at 17 17 50" src="https://user-images.githubusercontent.com/605953/71639479-b3c82900-2cba-11ea-9fb9-08201edf9271.png">
+
 
 ## Terms of Use for Data Sources
 
