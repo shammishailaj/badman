@@ -47,10 +47,12 @@ func main() {
 }
 ```
 
-`ipaddrs_in_traffic_logs.txt` includes only IP addresses line by line. `BadMan` downloads backlists from default sources (blacklist providers) and store entities in the blacklist into own repository. Default settings are below. After downloading blacklist, `Lookup` method is enabled to search given name (IP address or domain name, both are accepted) from the repository.
+`ipaddrs_in_traffic_logs.txt` includes only IP addresses line by line. In this case, `BadMan` downloads backlists prepared in this package and store entities (IP address or domain name) in the blacklist into own repository. After downloading blacklist, `Lookup` method is enabled to search given name (IP address or domain name, both are accepted) from the repository.
 
-- Default sources: `MVPS`, `MalwareDomains`, `URLhausRecent`, `URLhausOnline`
-- Default repository: `inMemoryRepository`, `dynamoRepository`
+Default settings are following.
+
+- Default sources: `MVPS`, `MalwareDomains`, `URLhausRecent` and `URLhausOnline`
+- Default repository: `inMemoryRepository`
 
 ### Insert a new bad entity one by one
 
@@ -135,20 +137,26 @@ Also, you can use own repository that is implemented `badman.Repository` interfa
 
 ## Use case
 
+Basically `badman` should be used as library and a user need to implement own program by leveraging `badman`.
+
 ### Stateless (Serveless model)
 
 ![Serverless Architecture for AWS](https://user-images.githubusercontent.com/605953/71566177-b844e400-2af8-11ea-8c65-bc5e8757be9e.png)
 
-
+In this case, there are 2 Lambda function. 1st (left side) function retrieves blacklist and saves dumped blacklist data to S3 periodically. 2nd (right side) Lambda function is invoked by S3 ObjectCreated event of traffic log file. After that, the Lambda function downloads both of dumped blacklist data and log file and check if the IP addresses of traffic logs exist in blacklist. If existing, lambda notify it to an administrator via communication tool, such as Slack.
 
 ### Stateful (Server model)
 
-<img width="640" alt="Screen Shot 2020-01-01 at 17 17 50" src="https://user-images.githubusercontent.com/605953/71639479-b3c82900-2cba-11ea-9fb9-08201edf9271.png">
+<img width="640" alt="Server based Architecture for AWS" src="https://user-images.githubusercontent.com/605953/71639479-b3c82900-2cba-11ea-9fb9-08201edf9271.png">
+
+A major advantage of server model is stream processing for real-time capability. Above serverless model has latency because buffering is required to assemble tiny log data to one object before uploading to S3. Generally, using the above model, the delay will be on the order of minutes. Therefore, it is recommended to use the server model when lower-latency processing is required.
+
+This program has a fluentd interface and receives traffic logs via fluentd. After that, use badman to check the traffic log for IP addresses included in the blacklist. Blacklist expects to be updated periodically, and uses DynamoDB as the repository so that it can recover even if the host running the program (in this case, EC2) crashes.
 
 
 ## Terms of Use for Data Sources
 
-The tool uses several online blacklist sites. They have each own Terms of Use and please note you need to understand their policy before operating in your environment. A part of Terms of Use regarding usage policy is following.
+The tool uses several online blacklist sites. They have each own Terms of Use and please note you need to understand their policy before operating in your environment. A part of their Terms of Use regarding usage policy is below.
 
 ### Winhelp2002 ( `MVPS` )
 
